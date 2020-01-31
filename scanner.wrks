@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+require Expect;
+open (BRLIST, "/home/kettmannd/pcinv/brlist");
+open (FARK, ">/home/kettmannd/pcinv/results1");
+$sucker = Expect->spawn("ssh -l kettmann access2");
+$sucker->expect(60, "password:");
+print $sucker "Migrane2\r";
+$sucker->expect(30, "access2");
+
+
+foreach $br (<BRLIST>)	{
+	chomp($br);
+	print FARK "$br     ";
+	$srvname = "u" . "$br" . "a";
+
+	#ping test
+	print $sucker "ping $srvname\r";
+	$sucker->expect(35, "access2");
+	$reply = $sucker->exp_before();
+	unless ($reply =~ /alive/)	{
+		print FARK "no ping\n";
+		next;
+	}
+
+	#ping is ok, continue
+	print $sucker "caller $br\r";
+	$sucker->expect(100, "$br#");
+	print $sucker "nt_list\r";
+	$sucker->expect(100, "$br#");
+	$listresult = $sucker->exp_before();
+	@wrks = split /\n/, $listresult;
+	$i = "0";
+	foreach $element (@wrks)    {
+		if ($element =~ /w6/)   {
+			$i++;
+		}
+	}
+	print FARK "$i\n";
+	print $sucker "exit\r";
+	$sucker->expect(20, "access2");
+
+}
