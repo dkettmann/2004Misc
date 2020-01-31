@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+require Expect;
+use Getopt::Std qw(getopts);
+$updatefile = "/home/kettmannd/newqip/update";
+open(UPDATE, ">>$updatefile");
+getopts("alcsu", \%option);
+if ($option{u})
+	{
+	print "\n", 'Usage:  newqip [-alcsu] <branch number> [xxx.xxx.xxx.xxx]', "\n";
+	print "\n-a  add branch and ip to update list. Requires LAN IP.\n",
+		"-l  list current update file.\n",
+		"-c  clear current update file.\n",
+		"-s  submit new branch entries to QIP box\n",
+		"-u  prints this screen\n\n";
+	exit;
+	}
+
+if ($option{l})
+	{
+#	print "\n\n";
+	system("cat $updatefile");
+#	print "\n\n";
+	exit;
+	}
+if ($option{c})
+	{
+	$junk = system("rename /home/kettmannd/newqip/update /home/kettmannd/newqip/update.bak");
+	system('touch /home/kettmannd/newqip/update');
+	}
+
+if ($option{a})
+	{
+	unless ($ARGV[0])
+		{
+		print "Missing Branch Number!\n";
+		exit;
+		}
+	unless ($ARGV[1])
+		{
+		print "Missing LAN Segment IP!\n";
+		exit;
+		}
+	chomp($branch = $ARGV[0]);
+	chomp($newlanip = $ARGV[1]);
+	($lana, $lanb, $lanc, $land) = split /\./, $newlanip;
+        if ($land == "0")
+                {
+                ($weed, $bald, $lood) = ("162", "182", "254");
+		}
+	if ($land == "32")
+		{
+		($weed, $bald, $lood) = ("166", "186", "253");
+		}
+	if ($land == "64")
+		{
+		($weed, $bald, $lood) = ("170", "190", "252");
+		}
+	if ($land == "96")
+		{
+		($weed, $bald, $lood) = ("174", "194", "251");
+		}
+	if ($land == "128")
+		{
+		($weed, $bald, $lood) = ("178", "198", "250");
+		}
+	if (!$weed)
+		{
+		print "Bad last octect in IP Segment!\n";
+		exit;
+		}	
+	$ethd = ++$land;
+	$hubd = ++$land;
+	$srvd = ++$land;
+	$lex  = ++$land;
+	$lex2 = ++$land;
+	$lex3 = ++$land;
+	$lex6 = ++$land;
+	$lex7 = ++$land;
+	$lex8 = ++$land;
+	$abc = join '.', $lana, $lanb, $lanc;
+	print UPDATE    "$abc.$ethd,rtr-br$branch,,,citifinancial.com,Router\n",
+			"$abc.$hubd,h$branch", "a,,,citifinancial.com,Wiring_HUB\n",
+			"$abc.$srvd,u$branch", "a,,,citifinancial.com,Server\n",
+			"$abc.$lex,p$branch", "a,,,citifinancial.com,Printer\n",
+			"$abc.$lex2,p$branch", "b,,,citifinancial.com,Printer\n",
+			"$abc.$lex3,p$branch", "c,,,citifinancial.com,Printer\n",
+			"$abc.$lex6,p$branch", "g,,,citifinancial.com,Printer\n",
+			"$abc.$lex7,p$branch", "h,,,citifinancial.com,Printer\n",
+			"$abc.$lex8,p$branch", "i,,,citifinancial.com,Printer\n",
+			"$abc.$weed,n$branch", ",,,citifinancial.com,Router\n",
+			"$abc.$bald,c$branch", ",,,citifinancial.com,Router\n",
+			"$abc.$lood,cnbr$branch", ",,,citifinancial.com,Router\n";	
+	}
+if ($option{s})
+	{
+	$data = `cat /home/kettmannd/newqip/update`;
+	unless ($data =~ m/\d{6}/g)
+		{
+		print "No Good Branch Numbers in update file!\n";
+		exit;
+		}
+	#system("cd /home/kettmannd/newqip/data/");
+	$bb = Expect->spawn("tftp 161.161.219.230") or die "Can't connect to TFTP on QIP Server!\n";
+	print $bb "put update\r";
+	$bb->expect(20, "Sent");
+	print $bb "quit\r";
+	system ("rsh 161.161.219.230 c:/qip/cli/item1.bat");
+	}
